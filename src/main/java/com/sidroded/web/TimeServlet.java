@@ -1,5 +1,9 @@
 package com.sidroded.web;
 
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.WebContext;
+import org.thymeleaf.templateresolver.FileTemplateResolver;
+
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -7,8 +11,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -16,14 +18,22 @@ import java.time.format.DateTimeFormatter;
 
 @WebServlet(value = "/time")
 public class TimeServlet extends HttpServlet {
+    private TemplateEngine engine;
+
+    @Override
+    public void init() throws ServletException {
+        engine = new TemplateEngine();
+
+        FileTemplateResolver resolver = new FileTemplateResolver();
+        resolver.setPrefix("./templates/");
+        resolver.setSuffix(".html");
+        resolver.setTemplateMode("HTML5");
+        resolver.setOrder(engine.getTemplateResolvers().size());
+        resolver.setCacheable(false);
+        engine.addTemplateResolver(resolver);
+    }
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType("text/html");
-        PrintWriter out = response.getWriter();
-        out.println("<html>");
-        out.println("<head><title>Current Time</title></head>");
-        out.println("<body>");
-
         String timezoneParam = request.getParameter("timezone");
         ZoneId zoneId;
 
@@ -36,13 +46,12 @@ public class TimeServlet extends HttpServlet {
 
         ZonedDateTime time = ZonedDateTime.now(zoneId);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z");
-        out.println("<h1>Current Time</h1>");
-        out.println("<p>" + formatter.format(time) + "</p>");
+        String currentTime = formatter.format(time);
 
-        out.println("</body>");
-        out.println("</html>");
+        WebContext ctx = new WebContext(request, response, request.getServletContext(), request.getLocale());
+        ctx.setVariable("currentTime", currentTime);
+
+        engine.process("time", ctx, response.getWriter());
     }
 
-    public void destroy() {
-    }
 }
